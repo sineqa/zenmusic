@@ -164,6 +164,9 @@ slack.on(RTM_EVENTS.MESSAGE, (message) => {
         case 'vote':
             _vote(channel, userName);
             break;
+        case 'votecheck':
+            _votecheck(channel, userName);
+            break;
         case 'list':
         case 'ls':
         case 'playlist':
@@ -420,9 +423,23 @@ function _gongcheck(channel, userName) {
         _log("_gongcheck > track: " + track);
 
         _slackMessage("GONG is currently " + gongCounter + "/" + gongLimit + " for " + track, channel.id);
-        var gongers = gongScore.keys();
+        var gongers = Object.keys(gongScore);
         if (gongers.length > 0) {
             _slackMessage("Gonged by " + gongers.join(','), channel.id);
+        }
+    });
+}
+
+function _votecheck(channel, userName) {
+    _log("_votecheck...");
+
+    _currentTrackTitle(channel, function (err, track) {
+        _log("_votecheck > track: " + track);
+
+        _slackMessage("VOTE is currently " + voteCounter + "/" + voteLimit + " for " + track, channel.id);
+        var voters = Object.keys(voteScore);
+        if (voters.length > 0) {
+            _slackMessage("Voted by " + voters.join(','), channel.id);
         }
     });
 }
