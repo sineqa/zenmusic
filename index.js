@@ -222,9 +222,6 @@ slack.on(RTM_EVENTS.MESSAGE, (message) => {
             case 'setvolume':
                 _setVolume(input, channel, userName);
                 break;
-            case 'say':
-                _say(input, channel);
-                break;
             case 'blacklist':
                 _blacklist(input, channel);
                 break;
@@ -549,25 +546,6 @@ function _flush(input, channel) {
         if (flushed) {
             _slackMessage("Sonos queue is clear.", channel.id);
         }
-    });
-}
-
-
-function _say(input, channel) {
-    if (channel.name !== adminChannel) {
-        return
-    }
-
-    var text = input[1];
-    // Replace all spaces with a _ because Sonos doesn't support spaces
-    text = text.replace(/ /g, '_');
-
-    // For supported languages see www.voicerss.org/api/documentation.aspx
-    // This url just redirects to voicerss because of the specific url format for the sonos
-    var url = 'http://i872953.iris.fhict.nl/speech/en-us_' + encodeURIComponent(text) + '.mp3';
-
-    sonos.queueNext(url, function (err, playing) {
-        _log([err, playing]);
     });
 }
 
