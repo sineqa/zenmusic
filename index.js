@@ -222,6 +222,9 @@ slack.on(RTM_EVENTS.MESSAGE, (message) => {
             case 'setvolume':
                 _setVolume(input, channel, userName);
                 break;
+            case 'say':
+                _say(input, channel);
+                break;
             case 'blacklist':
                 _blacklist(input, channel);
                 break;
