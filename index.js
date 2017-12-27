@@ -113,14 +113,20 @@ slack.on(RTM_EVENTS.MESSAGE, (message) => {
     let channel, channelError, channelName, errors, response, text, textError, ts, type, typeError, user, userName;
 
     channel = slack.dataStore.getChannelGroupOrDMById(message.channel);
-    // user = slack.dataStore.getUserById(message.user);
+
     response = '';
     type = message.type, ts = message.ts, text = message.text;
     channelName = (channel != null ? channel.is_channel : void 0) ? '#' : '';
     channelName = channelName + (channel ? channel.name : 'UNKNOWN_CHANNEL');
     userName = "<@" + message.user + ">";
-    // userName = (user != null ? user.display_name : void 0) != null ? "@" + user.name : "UNKNOWN_USER";
     _log("Received: " + type + " " + channelName + " " + userName + " " + ts + " \"" + text + "\"");
+
+    user = slack.dataStore.getUserById(message.user);
+    let displayName = (user != null ? user.display_name : void 0) != null ? "@" + user.name : "UNKNOWN_USER";
+    if (user.is_bot) {
+        _slackMessage("Sorry " + userName + ", no bots allowed!", channel.id);
+    }
+
     if (type !== 'message' || (text == null) || (channel == null)) {
         typeError = type !== 'message' ? "unexpected type " + type + "." : null;
         textError = text == null ? 'text was undefined.' : null;
