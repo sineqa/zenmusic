@@ -121,13 +121,6 @@ slack.on(RTM_EVENTS.MESSAGE, (message) => {
     userName = "<@" + message.user + ">";
     _log("Received: " + type + " " + channelName + " " + userName + " " + ts + " \"" + text + "\"");
 
-    user = slack.dataStore.getUserById(message.user);
-    let displayName = (user != null ? user.display_name : void 0) != null ? "@" + user.name : "UNKNOWN_USER";
-    if (message.user == "USLACKBOT" || (user && user.is_bot)) {
-        _slackMessage("Sorry " + userName + ", no bots allowed!", channel.id);
-        return;
-    }
-
     if (type !== 'message' || (text == null) || (channel == null)) {
         typeError = type !== 'message' ? "unexpected type " + type + "." : null;
         textError = text == null ? 'text was undefined.' : null;
@@ -143,6 +136,20 @@ slack.on(RTM_EVENTS.MESSAGE, (message) => {
         _log('User ' + userName + ' is blacklisted');
         _slackMessage("Nice try " + userName + ", you're banned :)", channel.id)
         return false;
+    }
+
+
+    user = slack.dataStore.getUserById(message.user);
+    let displayName = (user != null ? user.display_name : void 0) != null ? "@" + user.name : "UNKNOWN_USER";
+    if (message.user == "USLACKBOT" || (user && user.is_bot)) {
+        // There is a special case where slackbot complains that it didn't unfurl an image
+        // Let's ignore this
+        if (text.search("Pssst! I didn") >= 0) {
+            return;
+        }
+
+        _slackMessage("Sorry " + userName + ", no bots allowed!", channel.id);
+        return;
     }
 
     var input = text.split(' ');
