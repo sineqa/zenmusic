@@ -123,8 +123,9 @@ slack.on(RTM_EVENTS.MESSAGE, (message) => {
 
     user = slack.dataStore.getUserById(message.user);
     let displayName = (user != null ? user.display_name : void 0) != null ? "@" + user.name : "UNKNOWN_USER";
-    if (user && user.is_bot) {
+    if (message.user == "USLACKBOT" || (user && user.is_bot)) {
         _slackMessage("Sorry " + userName + ", no bots allowed!", channel.id);
+        return;
     }
 
     if (type !== 'message' || (text == null) || (channel == null)) {
