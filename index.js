@@ -337,12 +337,13 @@ function _showQueue(channel, cb) {
                     + "====================="
                 result.items.map(
                     function (item, i) {
+                        index = i + 1; // Make it 1-indexed. Cheers Mina :)
                         message += "\n";
                         if (item['title'] === track.title) {
-                            message += ":notes: " + "_#" + i + "_ *Title:* " + item['title'];
+                            message += ":notes: " + "_#" + index + "_ *Title:* " + item['title'];
                             message += " *Artist:* " + item['artist'];
                         } else {
-                            message += ">_#" + i + "_ *Title:* " + item['title'];
+                            message += ">_#" + index + "_ *Title:* " + item['title'];
                             message += " *Artist:* " + item['artist'];
                         }
                     }
