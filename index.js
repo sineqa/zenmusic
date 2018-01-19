@@ -54,6 +54,10 @@ var gongBanned = false;
 
 var gongTrack = ""; // What track was a GONG called on
 
+const stateFile = "./savedstate.json";
+var stateContents = fs.readFileSync(stateFile);
+var globalState = JSON.parse(stateContents);
+
 const RtmClient = require('@slack/client').RtmClient;
 const RTM_EVENTS = require('@slack/client').RTM_EVENTS;
 const MemoryDataStore = require('@slack/client').MemoryDataStore;
@@ -198,6 +202,9 @@ slack.on(RTM_EVENTS.MESSAGE, (message) => {
         case 'status':
             _status(channel);
             break;
+        case 'deny':
+            _deny(input, channel, userName);
+            break;
         case 'help':
             _help(input, channel);
             break;
@@ -253,6 +260,23 @@ slack.login();
 
 function _slackMessage(message, id) {
     slack.sendMessage(message, id);
+}
+
+function getState(key, defaultValue) {
+    if (globalState.hasOwnProperty(key)) {
+        return globalState[key];
+    }
+
+    return defaultValue;
+}
+
+function setState(key, value) {
+    globalState[key] = value;
+    saveGlobalState();
+}
+
+function saveGlobalState() {
+    fs.writeFileSync(stateFile, JSON.stringify(globalState), 'utf-8');
 }
 
 function _log(...args) {
@@ -430,6 +454,69 @@ function _vote(channel, userName) {
         }
     });
 }
+
+function _deny(input, channel, userName) {
+    if (input == 'this') {
+        _currentTrackTitle(channel, function (err, track) {
+            denyTrack(track, channel, userName);
+        });
+        return;
+    }
+
+    var data = _searchSpotify(input, channel, userName, 1);
+    if (!data) {
+        return;
+    }
+
+    var spid = data.tracks.items[0].id;
+    var uri = data.tracks.items[0].uri;
+    var external_url = data.tracks.items[0].external_urls.spotify;
+
+    var albumImg = data.tracks.items[0].album.images[2].url;
+    var trackName = data.tracks.items[0].artists[0].name + ' - ' + data.tracks.items[0].name;
+
+    denyTrack(trackName, channel, userName);
+}
+
+function denyTrack(trackName, channel, userName) {
+    var denyList = getState('denyList', {});
+    if (!denyList.hasOwnProperty(trackName)) {
+        denyList[trackName] = [];
+    }
+
+    var found = false;
+    for (var i = 0; i < denyList[trackName].length; i++) {
+        if (denyList[trackName][i] === userName) {
+            found = true;
+            break;
+        }
+    }
+
+    if (found) {
+        _slackMessage("Sorry " + userName + ", you've already denied this track!", channel.id);
+    }
+    else {
+        denyList[trackName].push(userName);
+        setState('denyList', denyList);
+
+        var numVotes = denyList[trackName].length;
+        _slackMessage("Noted, " + userName + ". That track now has " + numVotes + " deny votes.", channel.id);
+    }
+}
+
+function isDenied(trackName) {
+    var denyList = getState('denyList', {});
+    if (!denyList.hasOwnProperty(trackName)) {
+        return false;
+    }
+
+    if (denyList[trackName].length < 3) {
+        return false;
+    }
+
+    return true;
+}
+
 
 function _gongcheck(channel, userName) {
     _log("_gongcheck...");
@@ -661,6 +748,11 @@ function _add(input, channel, userName) {
 
     var albumImg = data.tracks.items[0].album.images[2].url;
     var trackName = data.tracks.items[0].artists[0].name + ' - ' + data.tracks.items[0].name;
+
+    if (isDenied(trackName)) {
+        _slackMessage("Sorry " + userName + ", your request has been denied.", channel.id);
+        return;
+    }
 
     sonos.getCurrentState(function (err, state) {
         if (err) {
