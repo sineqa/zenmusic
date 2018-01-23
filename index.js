@@ -271,6 +271,11 @@ slack.on(RTM_EVENTS.MESSAGE, (message) => {
                     _delsudoer(input, channel);
                 }
                 break;
+            case 'lssudo':
+                if (channel.name === adminChannel) {
+                    _listsudoers(channel);
+                }
+                break;
             default:
                 break;
         }
@@ -572,6 +577,12 @@ function _delsudoer(input, channel) {
     else {
         _slackMessage(name + " is not a sudoer", channel.id);
     }
+}
+
+function _listsudoers(channel) {
+    var sudoers = getState('sudoers', []);
+    var sudoersText = "Current list of sudoers:\n" + sudoers.join("\n");
+    _slackMessage(sudoersText, channel.id);
 }
 
 function isSudoer(userName) {
