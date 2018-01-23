@@ -167,10 +167,16 @@ slack.on(RTM_EVENTS.MESSAGE, (message) => {
     var term = input[0].toLowerCase();
     var sudo = false;
     // Only allow sudo if user is in sudoers.
-    if (term === 'sudo' && input.length > 1 && isSudoer(userName)) {
-        sudo = true;
-        term = input[1].toLowerCase();
-        input.shift();
+    if (term === 'sudo' && input.length > 1) {
+        if (isSudoer(userName)) {
+            sudo = true;
+            term = input[1].toLowerCase();
+            input.shift();
+        }
+        else {
+            _slackMessage("Request denied, " + userName + "!");
+            return;
+        }
     }
 
     var matched = true;
