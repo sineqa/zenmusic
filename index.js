@@ -167,14 +167,17 @@ slack.on(RTM_EVENTS.MESSAGE, (message) => {
     var term = input[0].toLowerCase();
     var sudo = false;
     // Only allow sudo if user is in sudoers.
-    if (term === 'sudo' && input.length > 1) {
+    if (term == 'sudo' && input.length > 1) {
+        _log("isSudoer", userName);
         if (isSudoer(userName)) {
+            _log("sudo = true for ", userName);
             sudo = true;
-            term = input[1].toLowerCase();
             input.shift();
+            term = input[0].toLowerCase();
         }
         else {
-            _slackMessage("Request denied, " + userName + "!");
+            _log("not sudoer", userName);
+            _slackMessage("Request denied, " + userName + "!", channel.id);
             return;
         }
     }
@@ -234,7 +237,33 @@ slack.on(RTM_EVENTS.MESSAGE, (message) => {
             break;
     }
 
-    if (!matched && (channel.name === adminChannel || sudo)) {
+    // Add admin commands to this list to issue a message when a regular
+    // user tries to use an admin-only command.
+    var adminCommands = [
+        'next',
+        'gongPlay',
+        'stop',
+        'flush',
+        'play',
+        'pause',
+        'playpause',
+        'resume',
+        'previous',
+        'setvolume',
+        'blacklist',
+        'addsudo',
+        'delsudo',
+        'lssudo'
+    ];
+
+    var isAdminChannel = channel.name === adminChannel;
+    if (!matched && adminCommands.indexOf(term) >= 0) {
+        if (!isAdminChannel && !sudo) {
+            _slackMessage("Sorry " + userName + ", I'm afraid I can't do that...", channel.id);
+            return;
+        }
+
+        matched = true;
         switch (term) {
             case 'next':
                 _nextTrack(channel);
@@ -283,9 +312,11 @@ slack.on(RTM_EVENTS.MESSAGE, (message) => {
                 }
                 break;
             default:
+                matched = false;
                 break;
         }
     }
+
 });
 
 slack.on('error', function (error) {
@@ -554,7 +585,7 @@ function isDenied(trackName) {
 }
 
 function _addsudoer(input, channel) {
-    var name = "<" + input[1] + ">";
+    var name = fixName(input[1]);
     if (!isSudoer(name)) {
         var sudoers = getState('sudoers', []);
         sudoers.push(name);
@@ -567,7 +598,8 @@ function _addsudoer(input, channel) {
 }
 
 function _delsudoer(input, channel) {
-    var name = "<" + input[1] + ">";
+    var name = fixName(input[1]);
+
     if (isSudoer(name)) {
         var sudoers = getState('sudoers', []);
         var newSudoers = [];
@@ -591,17 +623,18 @@ function _listsudoers(channel) {
     _slackMessage(sudoersText, channel.id);
 }
 
-function isSudoer(userName) {
-    var sudoers = getState('sudoers', []);
-    for (var i = 0; i < sudoers.length; i++) {
-        if (sudoers[i] == userName) {
-            return true;
-        }
+function fixName(name) {
+    if (name.charAt(0) != '<') {
+        name = "<" + name + ">";
     }
-
-    return false;
+    return name;
 }
 
+function isSudoer(userName) {
+    var name = fixName(userName);
+    var sudoers = getState('sudoers', []);
+    return sudoers.indexOf(name) >= 0;
+}
 
 function _gongcheck(channel, userName) {
     _log("_gongcheck...");
