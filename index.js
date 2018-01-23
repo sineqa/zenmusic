@@ -267,12 +267,12 @@ slack.on(RTM_EVENTS.MESSAGE, (message) => {
             case 'blacklist':
                 _blacklist(input, channel);
                 break;
-            case 'addsudoer':
+            case 'addsudo':
                 if (channel.name === adminChannel) {
                     _addsudoer(input, channel);
                 }
                 break;
-            case 'delsudoer':
+            case 'delsudo':
                 if (channel.name === adminChannel) {
                     _delsudoer(input, channel);
                 }
@@ -594,7 +594,7 @@ function _listsudoers(channel) {
 function isSudoer(userName) {
     var sudoers = getState('sudoers', []);
     for (var i = 0; i < sudoers.length; i++) {
-        if (sudoers[i] === userName) {
+        if (sudoers[i] == userName) {
             return true;
         }
     }
