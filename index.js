@@ -297,16 +297,22 @@ slack.on(RTM_EVENTS.MESSAGE, (message) => {
                 _blacklist(input, channel);
                 break;
             case 'addsudo':
+                // Cannot access this via sudo, otherwise sudoers could
+                // add/delete other users.
                 if (channel.name === adminChannel) {
                     _addsudoer(input, channel);
                 }
                 break;
             case 'delsudo':
+                // Cannot access this via sudo, otherwise sudoers could
+                // add/delete other users.
                 if (channel.name === adminChannel) {
                     _delsudoer(input, channel);
                 }
                 break;
             case 'lssudo':
+                // Cannot access this via sudo, otherwise the list of sudoers
+                // could be exposed in the normal channel.
                 if (channel.name === adminChannel) {
                     _listsudoers(channel);
                 }
@@ -363,10 +369,6 @@ function _getVolume(channel) {
 }
 
 function _setVolume(input, channel, userName) {
-    if (channel.name !== adminChannel) {
-        return
-    }
-
     var vol = input[1];
 
     if (isNaN(vol)) {
@@ -485,7 +487,7 @@ function _gong(channel, userName) {
             _slackMessage(randomMessage + " This is GONG " + gongCounter + "/" + gongLimit + " for " + track, channel.id);
             if (gongCounter >= gongLimit) {
                 _slackMessage("The music got GONGED!!", channel.id);
-                _nextTrack(channel, true)
+                _nextTrack(channel);
                 gongCounter = 0;
                 gongScore = {}
             }
@@ -665,9 +667,6 @@ function _votecheck(channel, userName) {
 }
 
 function _previous(input, channel) {
-    if (channel.name !== adminChannel) {
-        return
-    }
     sonos.previous(function (err, previous) {
         _log(err, previous);
     });
@@ -705,9 +704,6 @@ function _help(input, channel) {
 }
 
 function _play(input, channel) {
-    if (channel.name !== adminChannel) {
-        return
-    }
     sonos.selectQueue(function (err, result) {
         sonos.play(function (err, playing) {
             _log([err, playing])
@@ -722,9 +718,6 @@ function _play(input, channel) {
 }
 
 function _stop(input, channel) {
-    if (channel.name !== adminChannel) {
-        return
-    }
     sonos.stop(function (err, stopped) {
         _log([err, stopped])
         if (stopped) {
@@ -734,9 +727,6 @@ function _stop(input, channel) {
 }
 
 function _pause(input, channel) {
-    if (channel.name !== adminChannel) {
-        return
-    }
     sonos.selectQueue(function (err, result) {
         sonos.pause(function (err, paused) {
             _log([err, paused])
@@ -746,9 +736,6 @@ function _pause(input, channel) {
 }
 
 function _resume(input, channel) {
-    if (channel.name !== adminChannel) {
-        return
-    }
     sonos.play(function (err, playing) {
         _log([err, playing])
         if (playing) {
@@ -758,9 +745,6 @@ function _resume(input, channel) {
 }
 
 function _flush(input, channel) {
-    if (channel.name !== adminChannel) {
-        return
-    }
     sonos.flush(function (err, flushed) {
         _log([err, flushed])
         if (flushed) {
@@ -771,19 +755,13 @@ function _flush(input, channel) {
 
 
 function _gongPlay(channel) {
-    if (channel.name !== adminChannel) {
-        return
-    }
     sonos.play('http://raw.githubusercontent.com/htilly/zenmusic/master/doc/sound/gong.mp3', function (err, playing) {
         _log([err, playing])
     });
 }
 
 
-function _nextTrack(channel, byPassChannelValidation) {
-    if (channel.name !== adminChannel && !byPassChannelValidation) {
-        return
-    }
+function _nextTrack(channel) {
     sonos.next(function (err, nexted) {
         if (err) {
             _log(err);
@@ -1016,10 +994,6 @@ function _sl(channel, userName) {
 }
 
 function _blacklist(input, channel) {
-    if (channel.name !== adminChannel) {
-        return
-    }
-
     var action = ((input[1]) ? input[1] : '');
     var slackUser = ((input[2]) ? slack.dataStore.getUserById(input[2].slice(2, -1)) : '');
 
