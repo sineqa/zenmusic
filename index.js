@@ -55,8 +55,16 @@ var gongBanned = false;
 var gongTrack = ""; // What track was a GONG called on
 
 const stateFile = "./savedstate.json";
-var stateContents = fs.readFileSync(stateFile);
-var globalState = JSON.parse(stateContents);
+var stateContents;
+var globalState;
+try {
+    stateContents = fs.readFileSync(stateFile);
+    globalState = JSON.parse(stateContents);
+}
+catch (err) {
+    // WARNING: Failure to open the state file will clear the state.
+    globalState = {};
+}
 
 const RtmClient = require('@slack/client').RtmClient;
 const RTM_EVENTS = require('@slack/client').RTM_EVENTS;
@@ -142,7 +150,6 @@ slack.on(RTM_EVENTS.MESSAGE, (message) => {
         return false;
     }
 
-
     user = slack.dataStore.getUserById(message.user);
     let displayName = (user != null ? user.display_name : void 0) != null ? "@" + user.name : "UNKNOWN_USER";
     if (message.user == "USLACKBOT" || (user && user.is_bot)) {
@@ -158,6 +165,14 @@ slack.on(RTM_EVENTS.MESSAGE, (message) => {
 
     var input = text.split(' ');
     var term = input[0].toLowerCase();
+    var sudo = false;
+    // Only allow sudo if user is in sudoers.
+    if (term === 'sudo' && input.length > 1 && isSudoer(userName)) {
+        sudo = true;
+        term = input[1].toLowerCase();
+        input.shift();
+    }
+
     var matched = true;
     _log('term', term);
     switch (term) {
@@ -213,7 +228,7 @@ slack.on(RTM_EVENTS.MESSAGE, (message) => {
             break;
     }
 
-    if (!matched && channel.name === adminChannel) {
+    if (!matched && (channel.name === adminChannel || sudo)) {
         switch (term) {
             case 'next':
                 _nextTrack(channel);
@@ -245,6 +260,16 @@ slack.on(RTM_EVENTS.MESSAGE, (message) => {
                 break;
             case 'blacklist':
                 _blacklist(input, channel);
+                break;
+            case 'addsudoer':
+                if (channel.name === adminChannel) {
+                    _addsudoer(input, channel);
+                }
+                break;
+            case 'delsudoer':
+                if (channel.name === adminChannel) {
+                    _delsudoer(input, channel);
+                }
                 break;
             default:
                 break;
@@ -456,7 +481,7 @@ function _vote(channel, userName) {
 }
 
 function _deny(input, channel, userName) {
-    if (input == 'this') {
+    if (input[1] == 'this') {
         _currentTrackTitle(channel, function (err, track) {
             denyTrack(track, channel, userName);
         });
@@ -515,6 +540,49 @@ function isDenied(trackName) {
     }
 
     return true;
+}
+
+function _addsudoer(input, channel) {
+    var name = "<" + input[1] + ">";
+    if (!isSudoer(name)) {
+        var sudoers = getState('sudoers', []);
+        sudoers.push(name);
+        setState('sudoers', sudoers);
+        _slackMessage("Added " + name + " to sudoers list", channel.id);
+    }
+    else {
+        _slackMessage(name + " is already a sudoer", channel.id);
+    }
+}
+
+function _delsudoer(input, channel) {
+    var name = "<" + input[1] + ">";
+    if (isSudoer(name)) {
+        var sudoers = getState('sudoers', []);
+        var newSudoers = [];
+        for (var i = 0; i < sudoers.length; i++) {
+            if (sudoers[i] != name) {
+                newSudoers.push(sudoers[i])
+            }
+        }
+
+        setState('sudoers', newSudoers);
+        _slackMessage("Removed " + name + " from sudoers list", channel.id);
+    }
+    else {
+        _slackMessage(name + " is not a sudoer", channel.id);
+    }
+}
+
+function isSudoer(userName) {
+    var sudoers = getState('sudoers', []);
+    for (var i = 0; i < sudoers.length; i++) {
+        if (sudoers[i] === userName) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 
