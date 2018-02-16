@@ -675,29 +675,32 @@ function _previous(input, channel) {
 function _help(input, channel) {
     var message = 'Current commands!\n' +
         '=====================\n' +
-        '`current` : list current track\n' +
-        '`status` : show current status of Sonos\n' +
-        '`search` _text_ : search for a track, does NOT add it to the queue\n' +
+        '`current` : List current track\n' +
+        '`status` : Show current status of Sonos\n' +
+        '`search` _text_ : Search for a track, does NOT add it to the queue\n' +
         '`add` _text_ : Add song to the queue and start playing if idle.\n' +
         '`gong` : The current track is bad! ' + gongLimit + ' gongs will skip the track\n' +
         '`gongcheck` : How many gong votes there are currently, as well as who has gonged.\n' +
         '`vote` : The current track is great! ' + voteLimit + ' votes will prevent the track from being gonged\n' +
-        '`volume` : view current volume\n' +
-        '`list` : list current queue\n';
+        '`volume` : View current volume\n' +
+        '`list` : List current queue\n' +
+        '`deny` _text_ : Prevent the song from being added again\n' +
+        '`sl` : Try it and see\n' +
+        '`help` : What you just typed\n';
 
     if (channel.name == adminChannel) {
         message += '------ ADMIN FUNCTIONS ------\n' +
-            '`flush` : flush the current queue\n' +
-            '`setvolume` _number_ : sets volume\n' +
-            '`play` : play track\n' +
-            '`stop` : stop life\n' +
-            '`pause` : pause life\n' +
-            '`resume` : resume after pause\n' +
-            '`next` : play next track\n' +
-            '`previous` : play previous track\n' +
-            '`blacklist` : show users on blacklist\n' +
-            '`blacklist add @username` : add `@username` to the blacklist\n' +
-            '`blacklist del @username` : remove `@username` from the blacklist\n';
+            '`flush` : Flush the current queue\n' +
+            '`setvolume` _number_ : Sets volume\n' +
+            '`play` : Play track\n' +
+            '`stop` : Stop life\n' +
+            '`pause` : Pause life\n' +
+            '`resume` : Resume after pause\n' +
+            '`next` : Play next track\n' +
+            '`previous` : Play previous track\n' +
+            '`blacklist` : Show users on blacklist\n' +
+            '`blacklist add @username` : Add `@username` to the blacklist\n' +
+            '`blacklist del @username` : Remove `@username` from the blacklist\n';
     }
     message += '=====================\n'
     _slackMessage(message, channel.id);
