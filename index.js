@@ -1,4 +1,4 @@
-var Sonos = require('sonos').Sonos
+const Sonos = require('sonos').Sonos
 var urllibsync = require('urllib-sync');
 var urlencode = require('urlencode');
 var fs = require('fs');
@@ -14,11 +14,14 @@ config.argv()
         'maxVolume': '75',
         'market': 'US',
         'blacklist': [],
-        'searchLimit': 7
+        'searchLimit': 7,
+        'myUserId': ''
     });
 
+const myUserId = config.get('myUserId');
 var adminChannel = config.get('adminChannel');
 var standardChannel = config.get('standardChannel');
+var channelSaved;
 var token = config.get('token');
 var maxVolume = config.get('maxVolume');
 var market = config.get('market');
@@ -29,7 +32,7 @@ if (!Array.isArray(blacklist)) {
     blacklist = blacklist.replace(/\s*(,|^|$)\s*/g, "$1").split(/\s*,\s*/);
 }
 
-var sonos = new Sonos(config.get('sonos'));
+const sonos = new Sonos(config.get('sonos'));
 
 var gongCounter = 0;
 var gongLimit = 3;
@@ -41,7 +44,9 @@ var gongMessage = [
     "How much is this worth to you?",
     "I agree. Who added this song anyway?",
     "Thanks! I didn't want to play this song in the first place...",
-    "Look, I only played this song because it's Matt's favourite.",
+    "Hey, I only played this song because it's Matt's favourite.",
+    "Wow, after all I've done for you. Fine.",
+    "Really? You were singing that song at your desk for hours yesterday.",
     "Good call!",
     "Would some harp music be better?"
 ];
@@ -152,10 +157,15 @@ slack.on(RTM_EVENTS.MESSAGE, (message) => {
 
     user = slack.dataStore.getUserById(message.user);
     let displayName = (user != null ? user.display_name : void 0) != null ? "@" + user.name : "UNKNOWN_USER";
-    if (message.user == "USLACKBOT" || (user && user.is_bot)) {
+    if ((message.user !== myUserId) &&
+        ((message.user == "USLACKBOT") || (user && user.is_bot))) {
         // There is a special case where slackbot complains that it didn't unfurl an image
         // Let's ignore this
         if (text.search("Pssst! I didn") >= 0) {
+            return;
+        }
+
+        if (text.search("no bots allowed") >= 0) {
             return;
         }
 
@@ -296,6 +306,9 @@ slack.on(RTM_EVENTS.MESSAGE, (message) => {
             case 'blacklist':
                 _blacklist(input, channel);
                 break;
+            case 'ban':
+                _banTrack(input, channel);
+                break;
             case 'addsudo':
                 // Cannot access this via sudo, otherwise sudoers could
                 // add/delete other users.
@@ -331,8 +344,50 @@ slack.on('error', function (error) {
 
 slack.login();
 
+// Sonos event listeners. Looks like the node-sonos examples are broken.
+// sonos.on('CurrentTrack', function (track) {
+//     console.log('Track changed to %s by %s', track.title, track.artist);
+
+//     if (isBanned(track.title) || isBanned(track.artist)) {
+//         console.log("Track is banned. Skipping track...");
+//         _nextTrack(getStandardChannel());
+//         return;
+//     }
+
+//     slackMessageStandard("Now playing '" + track.title + "' by " + track.artist);
+// });
+
+// sonos.on('NextTrack', function (track) {
+//     console.log('The next track will be %s by %s', track.title, track.artist)
+// });
+
+// sonos.on('Volume', function (volume) {
+//     console.log('New Volume %d', volume);
+// });
+
+// sonos.on('Mute', function (isMuted) {
+//     console.log('This speaker is %s.', isMuted ? 'muted' : 'unmuted');
+// });
+
+// sonos.on('PlayState', function (state) {
+//     console.log('The state changed to %s.', state);
+// });
+
+
 function _slackMessage(message, id) {
     slack.sendMessage(message, id);
+}
+
+function getStandardChannel() {
+    if (!channelSaved) {
+        channelSaved = slack.getChannelByName(standardChannel);
+    }
+
+    return channelSaved;
+}
+
+function slackMessageStandard(message) {
+    _slackMessage(message, getStandardChannel().id);
 }
 
 function getState(key, defaultValue) {
@@ -584,6 +639,31 @@ function isDenied(trackName) {
     }
 
     return true;
+}
+
+function _banTrack(input, channel) {
+    var trackName = input.splice(1).join(" ").toLowerCase();
+    var banList = getState('banTrackList', []);
+    if (!banList.includes(trackName)) {
+        banList.push(trackName);
+        setState('banTrackList', banList);
+        _slackMessage("Added '" + trackName + "' to the list of banned tracks", channel.id);
+    }
+    else {
+        _slackMessage("'" + trackName + "' is already banned", channel.id);
+    }
+}
+
+// A track is considered banned if it contains any of the substrings in the banList.
+function isBanned(trackName) {
+    var track = trackName.toLowerCase();
+    var banList = getState('banTrackList', []);
+    for (let s of banList) {
+        if (track.includes(s)) {
+            return true;
+        }
+    }
+    return false;
 }
 
 function _addsudoer(input, channel) {
