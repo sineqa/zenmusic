@@ -1,0 +1,5 @@
+version: "3"
+services:
+  sonosbot:
+    build: .
+    restart: unless-stopped
